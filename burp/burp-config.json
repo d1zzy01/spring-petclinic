@@ -1,0 +1,23 @@
+{
+  "target": {
+    "scope": {
+      "include": [
+        { "enabled": true, "prefix": "http://localhost:8090" }
+      ]
+    }
+  },
+  "spider": {
+    "enabled": true,
+    "max_depth": 5,
+    "threads": 5
+  },
+  "scanner": {
+    "enabled": true,
+    "active_scanning": true,
+    "scan_speed": "normal"
+  },
+  "proxy": {
+    "intercept_client_requests": { "do_intercept": false },
+    "intercept_server_responses": { "do_intercept": false }
+  }
+}
