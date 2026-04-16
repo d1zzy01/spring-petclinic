@@ -5,7 +5,7 @@ pipeline {
         SONAR_HOST_URL    = 'http://sonarqube:9000'
         SONAR_TOKEN       = credentials('sonar-token')
         APP_JAR           = 'target/spring-petclinic-*.jar'
-        PRODUCTION_HOST   = '192.168.1.100'          // ← change to your VM IP
+        PRODUCTION_HOST   = 'production-server'       // ← change to your VM IP
         ANSIBLE_HOST_KEY_CHECKING = 'False'
     }
 
