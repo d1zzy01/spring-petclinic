@@ -63,7 +63,7 @@ pipeline {
             steps {
                 sh '''
                     docker run --rm \
-                    --network devsecops-net \
+                    --network devsecops_devsecops-net \
                     -v $(pwd)/burp/burp-config.json:/burp/burp-config.json \
                     burpsuite \
                     http://production-server:8080 \
