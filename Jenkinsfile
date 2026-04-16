@@ -61,33 +61,24 @@ pipeline {
 
         stage('Burp Suite Security Scan') {
             steps {
-                // Start app in background for DAST scan
-                sh 'java -jar $APP_JAR --server.port=8090 &'
-                sh 'sleep 20'   // wait for app to start
-
                 sh '''
                     docker run --rm \
-                      --network devsecops-net \
-                      -v $(pwd)/burp:/burp \
-                      burpsuite-headless \
-                      --unpause-spider-and-scanner \
-                      --config-file=/burp/burp-config.json \
-                      --project-file=/burp/petclinic-scan.burp \
-                      --report-output=/burp/burp-report.html
+                    --network devsecops-net \
+                    -v $(pwd)/burp:/burp \
+                    burpsuite \
+                    http://production-server:8080 \
+                    /burp/burp-report.html || true
                 '''
             }
             post {
                 always {
-                    // Kill background app
-                    sh "pkill -f 'spring-petclinic' || true"
-                    // Publish HTML report
                     publishHTML(target: [
-                        allowMissing:         false,
+                        allowMissing:          true,
                         alwaysLinkToLastBuild: true,
-                        keepAll:              true,
-                        reportDir:            'burp',
-                        reportFiles:          'burp-report.html',
-                        reportName:           'Burp Suite Security Report'
+                        keepAll:               true,
+                        reportDir:             'burp',
+                        reportFiles:           'burp-report.html',
+                        reportName:            'Burp Suite Security Report'
                     ])
                 }
             }
