@@ -64,10 +64,12 @@ pipeline {
                 sh '''
                     docker run --rm \
                     --network devsecops-net \
-                    -v $(pwd)/burp:/burp \
+                    -v $(pwd)/burp/burp-config.json:/burp/burp-config.json \
                     burpsuite \
                     http://production-server:8080 \
                     /burp/burp-report.html || true
+                    
+                    cp /var/jenkins_home/workspace/spring-petclinic/burp/burp-report.html $(pwd)/burp/ 2>/dev/null || true
                 '''
             }
             post {
