@@ -23,6 +23,7 @@
 
     - name: Kill existing app if running
       shell: pkill -f 'petclinic.jar' || true
+      ignore_errors: yes
 
     - name: Copy new JAR to production server
       copy:
