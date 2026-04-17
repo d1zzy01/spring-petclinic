@@ -63,13 +63,17 @@ pipeline {
             steps {
                 sh '''
                     mkdir -p $(pwd)/burp
+                    chmod 777 $(pwd)/burp
 
                     docker run --rm \
                     --network devsecops_devsecops-net \
                     -v $(pwd)/burp:/zap/wrk/:rw \
                     --user zap \
                     ghcr.io/zaproxy/zaproxy:stable \
-                    bash -c "zap-baseline.py -t http://production-server:8080 -r /zap/wrk/burp-report.html -I; ls -la /zap/wrk/" || true
+                    zap-baseline.py \
+                    -t http://production-server:8080 \
+                    -r burp-report.html \
+                    -I || true
 
                     ls -lh $(pwd)/burp/ || true
                 '''
