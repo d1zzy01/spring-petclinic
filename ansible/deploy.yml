@@ -5,9 +5,7 @@
 
   vars:
     app_port: 8080
-    app_user: petclinic
     app_dir: /opt/petclinic
-    service_name: petclinic
 
   tasks:
 
@@ -17,57 +15,29 @@
         state: present
         update_cache: yes
 
-    - name: Create app user
-      user:
-        name: "{{ app_user }}"
-        system: yes
-        shell: /usr/sbin/nologin
-        create_home: no
-
     - name: Create app directory
       file:
         path: "{{ app_dir }}"
         state: directory
-        owner: "{{ app_user }}"
         mode: '0755'
 
-    - name: Stop existing service (if running)
-      systemd:
-        name: "{{ service_name }}"
-        state: stopped
-      ignore_errors: yes
+    - name: Kill existing app if running
+      shell: pkill -f 'petclinic.jar' || true
 
     - name: Copy new JAR to production server
       copy:
         src: "{{ jar_path }}"
         dest: "{{ app_dir }}/petclinic.jar"
-        owner: "{{ app_user }}"
         mode: '0644'
 
-    - name: Deploy systemd service file
-      copy:
-        dest: /etc/systemd/system/{{ service_name }}.service
-        content: |
-          [Unit]
-          Description=Spring PetClinic
-          After=network.target
-
-          [Service]
-          User={{ app_user }}
-          ExecStart=/usr/bin/java -jar {{ app_dir }}/petclinic.jar --server.port={{ app_port }}
-          SuccessExitStatus=143
-          Restart=on-failure
-          RestartSec=10
-
-          [Install]
-          WantedBy=multi-user.target
-
-    - name: Reload systemd and start service
-      systemd:
-        name: "{{ service_name }}"
-        daemon_reload: yes
-        enabled: yes
-        state: started
+    - name: Start application in background
+      shell: |
+        nohup java -jar {{ app_dir }}/petclinic.jar \
+          --server.port={{ app_port }} \
+          > {{ app_dir }}/petclinic.log 2>&1 &
+        echo $! > {{ app_dir }}/petclinic.pid
+      args:
+        executable: /bin/bash
 
     - name: Wait for app to respond
       uri:
@@ -75,8 +45,8 @@
         status_code: 200
       register: result
       until: result.status == 200
-      retries: 12
-      delay: 5
+      retries: 15
+      delay: 10
 
     - name: Confirm deployment
       debug:

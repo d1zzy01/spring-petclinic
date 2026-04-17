@@ -88,12 +88,12 @@ pipeline {
 
         stage('Deploy to Production via Ansible') {
             steps {
-                sshagent(['production-ssh-key']) {   // Jenkins credential ID
+                sshagent(['production-ssh-key']) {
                     sh '''
                         ansible-playbook \
-                          -i ansible/inventory.ini \
-                          ansible/deploy.yml \
-                          --extra-vars "jar_path=$(ls $APP_JAR)"
+                        -i ansible/inventory.ini \
+                        ansible/deploy.yml \
+                        --extra-vars "jar_path=$(pwd)/target/spring-petclinic-4.0.0-SNAPSHOT.jar"
                     '''
                 }
             }
