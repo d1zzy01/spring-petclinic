@@ -68,8 +68,11 @@ pipeline {
                     --network devsecops_devsecops-net \
                     -v $(pwd)/burp:/zap/wrk/:rw \
                     --user root \
-                    burpsuite \
-                    http://production-server:8080 || true
+                    ghcr.io/zaproxy/zaproxy:stable \
+                    zap-baseline.py \
+                    -t http://production-server:8080 \
+                    -r burp-report.html \
+                    -I || true
 
                     ls -lh $(pwd)/burp/ || true
                 '''
