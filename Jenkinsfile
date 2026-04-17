@@ -87,9 +87,6 @@ pipeline {
         }
 
         stage('Deploy to Production via Ansible') {
-            when {
-                branch 'main'   // only deploy from main branch
-            }
             steps {
                 sshagent(['production-ssh-key']) {   // Jenkins credential ID
                     sh '''
