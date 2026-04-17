@@ -59,17 +59,17 @@ pipeline {
             }
         }
 
-        stage('Burp Suite Security Scan') {
+        stage('OWASP ZAP Security Scan') {
             steps {
                 sh '''
+                    mkdir -p $(pwd)/burp
+
                     docker run --rm \
                     --network devsecops_devsecops-net \
-                    -v $(pwd)/burp/burp-config.json:/burp/burp-config.json \
+                    -v $(pwd)/burp:/zap/wrk/:rw \
                     burpsuite \
                     http://production-server:8080 \
-                    /burp/burp-report.html || true
-                    
-                    cp /var/jenkins_home/workspace/spring-petclinic/burp/burp-report.html $(pwd)/burp/ 2>/dev/null || true
+                    /zap/wrk/burp-report.html || true
                 '''
             }
             post {
@@ -80,7 +80,7 @@ pipeline {
                         keepAll:               true,
                         reportDir:             'burp',
                         reportFiles:           'burp-report.html',
-                        reportName:            'Burp Suite Security Report'
+                        reportName:            'OWASP ZAP Security Report'
                     ])
                 }
             }
