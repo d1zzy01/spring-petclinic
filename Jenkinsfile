@@ -67,9 +67,11 @@ pipeline {
                     docker run --rm \
                     --network devsecops_devsecops-net \
                     -v $(pwd)/burp:/zap/wrk/:rw \
+                    --user root \
                     burpsuite \
-                    http://production-server:8080 \
-                    /zap/wrk/burp-report.html || true
+                    http://production-server:8080 || true
+
+                    ls -lh $(pwd)/burp/ || true
                 '''
             }
             post {
