@@ -67,12 +67,9 @@ pipeline {
                     docker run --rm \
                     --network devsecops_devsecops-net \
                     -v $(pwd)/burp:/zap/wrk/:rw \
-                    --user root \
+                    --user zap \
                     ghcr.io/zaproxy/zaproxy:stable \
-                    zap-baseline.py \
-                    -t http://production-server:8080 \
-                    -r burp-report.html \
-                    -I || true
+                    bash -c "zap-baseline.py -t http://production-server:8080 -r /zap/wrk/burp-report.html -I; ls -la /zap/wrk/" || true
 
                     ls -lh $(pwd)/burp/ || true
                 '''
