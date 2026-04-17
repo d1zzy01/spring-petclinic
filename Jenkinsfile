@@ -63,19 +63,13 @@ pipeline {
             steps {
                 sh '''
                     mkdir -p $(pwd)/burp
+                    chmod 777 $(pwd)/burp
 
-                    # Fix permissions so zap user can write to the volume
-                    docker run --rm \
-                    -v $(pwd)/burp:/zap/wrk/:rw \
-                    --user root \
-                    ghcr.io/zaproxy/zaproxy:stable \
-                    chmod 777 /zap/wrk
-
-                    # Now run the scan as zap user
                     docker run --rm \
                     --network devsecops_devsecops-net \
                     -v $(pwd)/burp:/zap/wrk/:rw \
-                    --user zap \
+                    -e HOME=/zap/wrk \
+                    --user root \
                     ghcr.io/zaproxy/zaproxy:stable \
                     zap-baseline.py \
                     -t http://production-server:8080 \
