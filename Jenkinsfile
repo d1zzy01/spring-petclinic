@@ -65,18 +65,21 @@ pipeline {
                     mkdir -p $(pwd)/burp
                     chmod 777 $(pwd)/burp
 
-                    # Run ZAP scan
+                    # Remove any previous container
+                    docker rm -f zap-scan 2>/dev/null || true
+
+                    # Run ZAP with volume mount AND named container
                     docker run --name zap-scan \
                     --network devsecops_devsecops-net \
+                    -v $(pwd)/burp:/zap/wrk:rw \
                     --user root \
                     ghcr.io/zaproxy/zaproxy:stable \
-                    bash -c "zap-baseline.py -t http://production-server:8080 -r burp-report.html -I || true" || true
+                    bash -c "chmod 777 /zap/wrk && zap-baseline.py -t http://production-server:8080 -r burp-report.html -I || true" || true
 
-                    # Copy report out of the ZAP container into Jenkins workspace
-                    docker cp zap-scan:/zap/wrk/burp-report.html $(pwd)/burp/burp-report.html || true
+                    # Copy report out just in case volume didnt work
+                    docker cp zap-scan:/zap/wrk/burp-report.html $(pwd)/burp/burp-report.html 2>/dev/null || true
 
-                    # Clean up the named container
-                    docker rm zap-scan || true
+                    docker rm zap-scan 2>/dev/null || true
 
                     ls -lh $(pwd)/burp/ || true
                 '''
