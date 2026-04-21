@@ -7,6 +7,10 @@ pipeline {
         APP_JAR           = 'target/spring-petclinic-*.jar'
         PRODUCTION_HOST   = 'production-server'       // ← change to your VM IP
         ANSIBLE_HOST_KEY_CHECKING = 'False'
+        // Allow Testcontainers to reach Docker-started containers from inside Jenkins container
+        DOCKER_HOST                           = 'unix:///var/run/docker.sock'
+        TESTCONTAINERS_HOST_OVERRIDE          = 'host.docker.internal'
+        TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE = '/var/run/docker.sock'
     }
 
     triggers {
