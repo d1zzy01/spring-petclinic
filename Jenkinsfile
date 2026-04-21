@@ -33,7 +33,7 @@ pipeline {
 
         stage('Build & Unit Tests') {
             steps {
-                sh 'mvn clean package -DskipTests=false'
+                sh 'mvn clean package -Dsurefire.excludes="**/*IntegrationTests.java"'
             }
             post {
                 always {
