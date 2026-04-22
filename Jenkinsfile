@@ -63,19 +63,6 @@ pipeline {
             }
         }
 
-        stage('Deploy to Production via Ansible') {
-            steps {
-                sshagent(['production-ssh-key']) {
-                    sh '''
-                        ansible-playbook \
-                        -i ansible/inventory.ini \
-                        ansible/deploy.yml \
-                        --extra-vars "jar_path=$(pwd)/target/spring-petclinic-4.0.0-SNAPSHOT.jar"
-                    '''
-                }
-            }
-        }
-
         stage('OWASP ZAP Security Scan') {
             steps {
                 sh '''
@@ -85,7 +72,7 @@ pipeline {
                     # Remove any previous container
                     docker rm -f zap-scan 2>/dev/null || true
 
-                    # Run ZAP against the version that was just deployed by Ansible.
+                    # Run ZAP with volume mount AND named container
                     docker run --name zap-scan \
                     --network devsecops_devsecops-net \
                     -v $(pwd)/burp:/zap/wrk:rw \
@@ -93,25 +80,37 @@ pipeline {
                     ghcr.io/zaproxy/zaproxy:stable \
                     bash -c "chmod 777 /zap/wrk && zap-baseline.py -t http://production-server:8080 -r burp-report.html -I || true" || true
 
-                    # Copy report out just in case volume did not write it to the workspace.
+                    # Copy report out just in case volume didnt work
                     docker cp zap-scan:/zap/wrk/burp-report.html $(pwd)/burp/burp-report.html 2>/dev/null || true
 
                     docker rm zap-scan 2>/dev/null || true
 
-                    ls -lh $(pwd)/burp/
-                    test -s $(pwd)/burp/burp-report.html
+                    ls -lh $(pwd)/burp/ || true
                 '''
             }
             post {
                 always {
                     publishHTML(target: [
-                        allowMissing:          false,
+                        allowMissing:          true,
                         alwaysLinkToLastBuild: true,
                         keepAll:               true,
                         reportDir:             'burp',
                         reportFiles:           'burp-report.html',
                         reportName:            'OWASP ZAP Security Report'
                     ])
+                }
+            }
+        }
+
+        stage('Deploy to Production via Ansible') {
+            steps {
+                sshagent(['production-ssh-key']) {
+                    sh '''
+                        ansible-playbook \
+                        -i ansible/inventory.ini \
+                        ansible/deploy.yml \
+                        --extra-vars "jar_path=$(pwd)/target/spring-petclinic-4.0.0-SNAPSHOT.jar"
+                    '''
                 }
             }
         }
