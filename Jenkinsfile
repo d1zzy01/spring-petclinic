@@ -66,32 +66,35 @@ pipeline {
         stage('OWASP ZAP Security Scan') {
             steps {
                 sh '''
-                    mkdir -p $(pwd)/zap
-                    chmod 777 $(pwd)/zap
+                    mkdir -p "$(pwd)/zap"
+                    chmod 777 "$(pwd)/zap"
 
-                    # Remove any previous container
-                    docker rm -f zap-scan 2>/dev/null || true
+                    cleanup() {
+                      docker rm -f zap-scan >/dev/null 2>&1 || true
+                    }
+                    trap cleanup EXIT
 
-                    # Run ZAP with volume mount AND named container
+                    # Remove any previous container before starting a new scan.
+                    cleanup
+
+                    # Run ZAP scan and fail the stage if scan execution fails.
                     docker run --name zap-scan \
                     --network devsecops-net \
-                    -v $(pwd)/zap:/zap/wrk:rw \
                     --user root \
                     ghcr.io/zaproxy/zaproxy:stable \
-                    bash -c "chmod 777 /zap/wrk && zap-baseline.py -t http://production-server:8080 -r zap-report.html -I || true" || true
+                    bash -lc "mkdir -p /zap/wrk && zap-baseline.py -t http://production-server:8080 -r /zap/wrk/zap-report.html -I"
 
-                    # Copy report out just in case volume didnt work
-                    docker cp zap-scan:/zap/wrk/zap-report.html $(pwd)/zap/zap-report.html 2>/dev/null || true
+                    # Always copy report out from the container, then verify it exists.
+                    docker cp zap-scan:/zap/wrk/zap-report.html "$(pwd)/zap/zap-report.html"
+                    test -s "$(pwd)/zap/zap-report.html"
 
-                    docker rm zap-scan 2>/dev/null || true
-
-                    ls -lh $(pwd)/zap/ || true
+                    ls -lh "$(pwd)/zap/"
                 '''
             }
             post {
                 always {
                     publishHTML(target: [
-                        allowMissing:          true,
+                        allowMissing:          false,
                         alwaysLinkToLastBuild: true,
                         keepAll:               true,
                         reportDir:             'zap',
