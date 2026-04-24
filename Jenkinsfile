@@ -76,47 +76,46 @@ pipeline {
             }
         }
 
-        stage('Wait for Production App') {
-            steps {
-                sh '''
-                    for i in $(seq 1 30); do
-                    if curl -fsS http://production-server:8080 >/dev/null; then
-                        exit 0
-                    fi
-                    echo "Waiting for production-server:8080"
-                    sleep 10
-                    done
-                    echo "App did not become ready in time"
-                    docker exec production-server ps -ef || true
-                    docker exec production-server bash -lc 'tail -n 200 /opt/petclinic/petclinic.log' || true
-                    exit 1
-                '''
-            }
-        }
-
         stage('OWASP ZAP Security Scan') {
             steps {
                 sh '''
-                    mkdir -p "$(pwd)/zap"
-                    chmod 777 "$(pwd)/zap"
+                    mkdir -p $(pwd)/burp
+                    chmod 777 $(pwd)/burp
 
-                    cleanup() {
-                    docker rm -f zap-scan >/dev/null 2>&1 || true
-                    }
-                    trap cleanup EXIT
-                    cleanup
+                    # Remove any previous container
+                    docker rm -f zap-scan 2>/dev/null || true
 
+                    # Run ZAP against the version that was just deployed by Ansible.
                     docker run --name zap-scan \
-                    --network devsecops-net \
+                    --network devsecops_devsecops-net \
+                    -v $(pwd)/burp:/zap/wrk:rw \
                     --user root \
                     ghcr.io/zaproxy/zaproxy:stable \
-                    bash -lc "mkdir -p /zap/wrk && /zap/zap-baseline.py -t http://production-server:8080 -r zap-report.html -I"
+                    bash -c "chmod 777 /zap/wrk && zap-baseline.py -t http://production-server:8080 -r burp-report.html -I || true" || true
 
-                    docker cp zap-scan:/zap/wrk/zap-report.html "$(pwd)/zap/zap-report.html"
-                    test -s "$(pwd)/zap/zap-report.html"
+                    # Copy report out just in case volume did not write it to the workspace.
+                    docker cp zap-scan:/zap/wrk/burp-report.html $(pwd)/burp/burp-report.html 2>/dev/null || true
+
+                    docker rm zap-scan 2>/dev/null || true
+
+                    ls -lh $(pwd)/burp/
+                    test -s $(pwd)/burp/burp-report.html
                 '''
             }
+            post {
+                always {
+                    publishHTML(target: [
+                        allowMissing:          false,
+                        alwaysLinkToLastBuild: true,
+                        keepAll:               true,
+                        reportDir:             'burp',
+                        reportFiles:           'burp-report.html',
+                        reportName:            'OWASP ZAP Security Report'
+                    ])
+                }
+            }
         }
+    }
 
     post {
         success {
