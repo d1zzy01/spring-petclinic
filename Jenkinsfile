@@ -91,8 +91,7 @@ pipeline {
                     -v $(pwd)/zap:/zap/wrk:rw \
                     --user root \
                     ghcr.io/zaproxy/zaproxy:stable \
-                    bash -c "chmod 777 /zap/wrk && zap-baseline.py -t http://production-server:8080 -r zap-report.html -I || true" || true
-
+                    bash -lc "mkdir -p /zap/wrk && /zap/zap-baseline.py -t http://production-server:8080 -r zap-report.html -I"
                     # Copy report out just in case volume didnt work
                     docker cp zap-scan:/zap/wrk/zap-report.html $(pwd)/zap/zap-report.html 2>/dev/null || true
 
@@ -107,8 +106,8 @@ pipeline {
                         allowMissing:          false,
                         alwaysLinkToLastBuild: true,
                         keepAll:               true,
-                        reportDir:             'burp',
-                        reportFiles:           'burp-report.html',
+                        reportDir:             'zap',
+                        reportFiles:           'zap-report.html',
                         reportName:            'OWASP ZAP Security Report'
                     ])
                 }
