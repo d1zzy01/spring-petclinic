@@ -82,7 +82,7 @@ pipeline {
                     --network devsecops-net \
                     --user root \
                     ghcr.io/zaproxy/zaproxy:stable \
-                    bash -lc "mkdir -p /zap/wrk && zap-baseline.py -t http://production-server:8080 -r /zap/wrk/zap-report.html -I"
+                    bash -lc "mkdir -p /zap/wrk && /zap/zap-baseline.py -t http://production-server:8080 -r /zap/wrk/zap-report.html -I"
 
                     # Always copy report out from the container, then verify it exists.
                     docker cp zap-scan:/zap/wrk/zap-report.html "$(pwd)/zap/zap-report.html"
