@@ -63,48 +63,6 @@ pipeline {
             }
         }
 
-        stage('OWASP ZAP Security Scan') {
-            steps {
-                sh '''
-                    mkdir -p "$(pwd)/zap"
-                    chmod 777 "$(pwd)/zap"
-
-                    cleanup() {
-                      docker rm -f zap-scan >/dev/null 2>&1 || true
-                    }
-                    trap cleanup EXIT
-
-                    # Remove any previous container before starting a new scan.
-                    cleanup
-
-                    # Run ZAP scan and fail the stage if scan execution fails.
-                    docker run --name zap-scan \
-                    --network devsecops-net \
-                    --user root \
-                    ghcr.io/zaproxy/zaproxy:stable \
-                    bash -lc "mkdir -p /zap/wrk && /zap/zap-baseline.py -t http://production-server:8080 -r zap-report.html -I"
-
-                    # Always copy report out from the container, then verify it exists.
-                    docker cp zap-scan:/zap/wrk/zap-report.html "$(pwd)/zap/zap-report.html"
-                    test -s "$(pwd)/zap/zap-report.html"
-
-                    ls -lh "$(pwd)/zap/"
-                '''
-            }
-            post {
-                always {
-                    publishHTML(target: [
-                        allowMissing:          false,
-                        alwaysLinkToLastBuild: true,
-                        keepAll:               true,
-                        reportDir:             'zap',
-                        reportFiles:           'zap-report.html',
-                        reportName:            'OWASP ZAP Security Report'
-                    ])
-                }
-            }
-        }
-
         stage('Deploy to Production via Ansible') {
             steps {
                 sshagent(['production-ssh-key']) {
@@ -117,7 +75,48 @@ pipeline {
                 }
             }
         }
-    }
+
+        stage('Wait for Production App') {
+            steps {
+                sh '''
+                    for i in $(seq 1 30); do
+                    if curl -fsS http://production-server:8080 >/dev/null; then
+                        exit 0
+                    fi
+                    echo "Waiting for production-server:8080"
+                    sleep 10
+                    done
+                    echo "App did not become ready in time"
+                    docker exec production-server ps -ef || true
+                    docker exec production-server bash -lc 'tail -n 200 /opt/petclinic/petclinic.log' || true
+                    exit 1
+                '''
+            }
+        }
+
+        stage('OWASP ZAP Security Scan') {
+            steps {
+                sh '''
+                    mkdir -p "$(pwd)/zap"
+                    chmod 777 "$(pwd)/zap"
+
+                    cleanup() {
+                    docker rm -f zap-scan >/dev/null 2>&1 || true
+                    }
+                    trap cleanup EXIT
+                    cleanup
+
+                    docker run --name zap-scan \
+                    --network devsecops-net \
+                    --user root \
+                    ghcr.io/zaproxy/zaproxy:stable \
+                    bash -lc "mkdir -p /zap/wrk && /zap/zap-baseline.py -t http://production-server:8080 -r zap-report.html -I"
+
+                    docker cp zap-scan:/zap/wrk/zap-report.html "$(pwd)/zap/zap-report.html"
+                    test -s "$(pwd)/zap/zap-report.html"
+                '''
+            }
+        }
 
     post {
         success {
